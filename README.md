@@ -39,7 +39,7 @@ self.delegates = [BTDelegates<HostDelegate> new];
 
 
 #### 分发现存的delegate的消息
-- 假如一些类的delegate已经固定无法修改，例如UITableView的delegate，你也可以通过以下方式来进行消息分发
+- 假如一些类的delegate代码你无法修改，例如UITableView的delegate，你也可以通过以下方式来进行消息分发
 ```
 BTDelegates<HostDelegate> *delegateDispatcher = [BTDelegates<HostDelegate> new];
 [delegateDispatcher addDelegate:obj0];
