@@ -6,8 +6,8 @@ BTDelegates 是一个线程安全，调用安全的delegate事件分发器。传
 
 
 #### 替代单一delegate模式
-- 传统写法
 传统delegate只能设置一个对象的代理，使用BTDelegates你可以轻松地设置多个对象的代理，而不需要进行太多修改。
+- 传统写法
 ```
 //定义weak属性
 @property (nonatomic, weak) id<HostDelegate> delegate;
