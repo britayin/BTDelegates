@@ -40,7 +40,7 @@ self.delegates = [BTDelegates<HostDelegate> new];
 
 
 #### 分发现存的delegate的消息
-- 假如一些类的delegate代码你无法修改，例如UITableView的delegate，你也可以通过以下方式来进行消息分发。原来你只能设置一个代理，那么现在你可以设置很多个了。
+假如一些类的delegate代码你无法修改，例如UITableView的delegate，你也可以通过以下方式来进行消息分发。原来你只能设置一个代理，那么现在你可以设置很多个了。
 ```
 BTDelegates<HostDelegate> *delegateDispatcher = [BTDelegates<HostDelegate> new];
 [delegateDispatcher addDelegate:obj0];
