@@ -27,7 +27,7 @@ if ([self.delegate respondsToSelector:@selector(onHostReturnHome:)]) {
 @property (nonatomic, strong) BTDelegates<HostDelegate> *delegates; 
 
 //在使用前你需要进行初始化
-self.delegates = [BTDelegates<HostDelegate> new];
+self.delegates = [BTDelegates delegates];
 
 //添加代理
 [host.delegates addDelegate:obj0];
@@ -42,7 +42,7 @@ self.delegates = [BTDelegates<HostDelegate> new];
 #### 分发现存的delegate的消息
 假如一些类的delegate代码你无法修改，例如UITableView的delegate，你也可以通过以下方式来进行消息分发。原来你只能设置一个代理，那么现在你可以设置很多个了。
 ```
-BTDelegates<HostDelegate> *delegateDispatcher = [BTDelegates<HostDelegate> new];
+BTDelegates<HostDelegate> *delegateDispatcher = [BTDelegates delegates];
 [delegateDispatcher addDelegate:obj0];
 [delegateDispatcher addDelegate:obj1];
 
@@ -54,7 +54,7 @@ host.delegate = delegateDispatcher;
 #### 任意对象的消息分发
 对于拥有相同方法甚至不同方法的任意多个任意类型的对象，你都可以将他们添加到同一个BTDelegates对象中，你只需要调用一次接口，所有实现了该接口的对象就能收到消息，而没有实现该接口的对象不会收到消息。调用是安全的，你无须进行respondsToSelector:的判断。
 ```
-id messageDispatcher = [BTDelegates new];
+id messageDispatcher = [BTDelegates delegates];
 [delegateDispatcher addDelegate:obj0];
 [delegateDispatcher addDelegate:obj1];
 
