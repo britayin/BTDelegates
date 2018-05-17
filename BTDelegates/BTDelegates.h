@@ -11,7 +11,7 @@
 /**
  Usage:
  
- BTDelegates<MyDelegate> *delegates = [BTDelegates<MyDelegate> new];
+ BTDelegates<MyDelegate> *delegates = [BTDelegates delegates];
  //BTDelegates<MyDelegate, OherDelegate> is also OK
  
  //you can add more than one delegate
@@ -19,7 +19,7 @@
  [delegates addDelegate:obj1];
  [delegates addDelegate:obj2];
  
- //You can call the Yfunction of the protocol. You need not to check. Call directly.
+ //You can call the function of the protocol. You need not to check. Call directly.
  [delegates callTheFuncOfMyDelegate:sth];
  
  //you can add remove a delegate
@@ -30,5 +30,8 @@
 
 - (void)addDelegate:(id)delegate;
 - (void)removeDelegate:(id)delegate;
+- (void)removeAllDelegates;
+
++ (id)delegates;
 
 @end
