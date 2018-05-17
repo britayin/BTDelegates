@@ -8,97 +8,135 @@
 
 #import "BTDelegates.h"
 
+@interface BTDelegateValue : NSObject
+
+@property (nonatomic, weak) id delegate;
+@property (atomic, assign) BOOL deleted;
+
+@end
+
+@implementation BTDelegateValue
+
++ (BTDelegateValue *)delegateValue:(id)delegate
+{
+    BTDelegateValue * __autoreleasing value = [BTDelegateValue new];
+    value.delegate = delegate;
+    return value;
+}
+
+- (id)delegate
+{
+    if (self.deleted) {
+        return nil;
+    }
+    return _delegate;
+}
+
+- (void)delete
+{
+    self.deleted = YES;
+}
+
+@end
+
 @interface BTDelegates ()
 
-@property (nonatomic, strong) NSPointerArray *delegates;
-@property (nonatomic, strong) dispatch_queue_t syncQueue;
+@property (nonatomic, strong) NSMutableArray<BTDelegateValue *> *delegates;
 @property (nonatomic, assign) BOOL needClean;
 
 @end
 
 @implementation BTDelegates
 
++ (id)delegates
+{
+    BTDelegates * __autoreleasing delegates = [BTDelegates new];
+    return delegates;
+}
+
 - (void)dealloc
 {
-    if (self.syncQueue) {
-        self.syncQueue = nil;
-    }
-    
     self.delegates = nil;
 }
 
 - (instancetype)init
 {
     if (self = [super init]) {
-        self.delegates = [NSPointerArray weakObjectsPointerArray];
-        NSString* uuid = [NSString stringWithFormat:@"com.z28j.array_%p", self];
-        self.syncQueue = dispatch_queue_create([uuid UTF8String], DISPATCH_QUEUE_CONCURRENT);
+        self.delegates = [NSMutableArray array];
         self.needClean = NO;
     }
     return self;
 }
 
+- (id)getDelegateAtIndex:(NSUInteger)index
+{
+    if (index >= self.delegates.count) {
+        return nil;
+    }
+    BTDelegateValue *value = self.delegates[index];
+    return value.delegate;
+}
+
 - (void)addDelegate:(id)delegate
 {
-    __weak typeof(self) weakSelf = self;
-    dispatch_barrier_async(self.syncQueue, ^{
-        __strong typeof(self) strongSelf = weakSelf;
-        for (NSUInteger i = 0; i < strongSelf.delegates.count; i++) {
-            id tDelegate = [strongSelf.delegates pointerAtIndex:i];
-            if (tDelegate) {
-                if (tDelegate == delegate) {
-                    return;
-                }
-            }else{
-                self.needClean = YES;
+    for (NSUInteger i = 0; i < self.delegates.count; i++) {
+        id tDelegate = [self getDelegateAtIndex:i];
+        if (tDelegate) {
+            if (tDelegate == delegate) {
+                return;
             }
+        }else{
+            self.needClean = YES;
         }
-        
-        [strongSelf.delegates addPointer:(__bridge void *)(delegate)];
-        
-        [strongSelf checkNeedClean];
-    });
+    }
+    
+    [self.delegates addObject:[BTDelegateValue delegateValue:delegate]];
+    
+    [self checkNeedClean];
 }
 
 - (void)removeDelegate:(id)delegate
 {
-    __weak typeof(self) weakSelf = self;
-    dispatch_barrier_async(self.syncQueue, ^{
-        __strong typeof(self) strongSelf = weakSelf;
-        for (NSUInteger i = 0; i < strongSelf.delegates.count; i++) {
-            id tDelegate = [strongSelf.delegates pointerAtIndex:i];
-            if (tDelegate) {
-                if (tDelegate == delegate) {
-                    [strongSelf.delegates removePointerAtIndex:i];
-                    break;
-                }
-            }else{
-                strongSelf.needClean = YES;
+    for (NSUInteger i = 0; i < self.delegates.count; i++) {
+        BTDelegateValue *value = [self.delegates objectAtIndex:i];
+        id tDelegate = value.delegate;
+        if (tDelegate) {
+            if (tDelegate == delegate) {
+                [value delete];
+                break;
             }
+        }else{
+            self.needClean = YES;
         }
-        
-        [strongSelf checkNeedClean];
-    });
+    }
+    
+    [self checkNeedClean];
+}
+
+- (void)removeAllDelegates
+{
+    for (NSUInteger i = 0; i < self.delegates.count; i++) {
+        BTDelegateValue *value = self.delegates[i];
+        [value delete];
+    }
+    
+    [self checkNeedClean];
 }
 
 - (void)forwardInvocation:(NSInvocation *)anInvocation
 {
-    __weak typeof(self) weakSelf = self;
-    dispatch_sync(_syncQueue, ^{
-        __strong typeof(self) strongSelf = weakSelf;
-        for (NSUInteger i = 0; i < strongSelf.delegates.count; i++) {
-            id tDelegate = [strongSelf.delegates pointerAtIndex:i];
-            if (tDelegate) {
-                if ([tDelegate respondsToSelector:anInvocation.selector]) {
-                    [anInvocation invokeWithTarget:tDelegate];
-                }
-            }else{
-                strongSelf.needClean = YES;
+    for (NSUInteger i = 0; i < self.delegates.count; i++) {
+        id tDelegate = [self getDelegateAtIndex:i];
+        if (tDelegate) {
+            if ([tDelegate respondsToSelector:anInvocation.selector]) {
+                [anInvocation invokeWithTarget:tDelegate];
             }
+        }else{
+            self.needClean = YES;
         }
-        
-        [strongSelf checkNeedClean];
-    });
+    }
+    
+    [self checkNeedClean];
 }
 
 - (BOOL)respondsToSelector:(SEL)aSelector
@@ -107,23 +145,20 @@
         return YES;
     }
     
-    __block BOOL result = NO;
-    __weak typeof(self) weakSelf = self;
-    dispatch_sync(_syncQueue, ^{
-        __strong typeof(self) strongSelf = weakSelf;
+    BOOL result = NO;
         
-        for (NSUInteger i = 0; i < strongSelf.delegates.count; i++) {
-            id tDelegate = [strongSelf.delegates pointerAtIndex:i];
-            if (tDelegate) {
-                if ([tDelegate respondsToSelector:aSelector]) {
-                    result = YES;
-                    break;
-                }
-            }else{
-                strongSelf.needClean = YES;
+    for (NSUInteger i = 0; i < self.delegates.count; i++) {
+        id tDelegate = [self getDelegateAtIndex:i];
+        if (tDelegate) {
+            if ([tDelegate respondsToSelector:aSelector]) {
+                result = YES;
+                break;
             }
+        }else{
+            self.needClean = YES;
         }
-    });
+    }
+    
     return result;
 }
 
@@ -132,23 +167,18 @@
     __block NSMethodSignature *sig = [super methodSignatureForSelector:aSelector];
     if(sig) return sig;
     
-    __weak typeof(self) weakSelf = self;
-    dispatch_sync(_syncQueue, ^{
-        __strong typeof(self) strongSelf = weakSelf;
-        
-        for (NSUInteger i = 0; i < strongSelf.delegates.count; i++) {
-            NSObject *tDelegate = [strongSelf.delegates pointerAtIndex:i];
-            if (tDelegate) {
-                NSMethodSignature *tSig = [tDelegate.class instanceMethodSignatureForSelector:aSelector];
-                if(tSig) {
-                    sig = tSig;
-                    break;
-                }
-            }else{
-                strongSelf.needClean = YES;
+    for (NSUInteger i = 0; i < self.delegates.count; i++) {
+        NSObject *tDelegate = [self getDelegateAtIndex:i];
+        if (tDelegate) {
+            NSMethodSignature *tSig = [tDelegate.class instanceMethodSignatureForSelector:aSelector];
+            if(tSig) {
+                sig = tSig;
+                break;
             }
+        }else{
+            self.needClean = YES;
         }
-    });
+    }
     
     //return a blank method sig to avoid crash
     return [BTDelegates instanceMethodSignatureForSelector:@selector(blankCall)];
@@ -164,22 +194,18 @@
     
     self.needClean = NO;
     
-    [self performSelector:@selector(cleanInvalidObserver) withObject:nil afterDelay:0.2];
+    [self performSelectorOnMainThread:@selector(cleanDeletedDelegates) withObject:nil waitUntilDone:NO];
 }
 
-- (void)cleanInvalidObserver
+- (void)cleanDeletedDelegates
 {
-    __weak typeof(self) weakSelf = self;
-    dispatch_barrier_async(self.syncQueue, ^{
-        __strong typeof(self) strongSelf = weakSelf;
-        for (NSUInteger i = 0; i < strongSelf.delegates.count; i++) {
-            id tDelegate = [strongSelf.delegates pointerAtIndex:i];
-            if (!tDelegate) {
-                [strongSelf.delegates removePointerAtIndex:i];
-            }
+    for (NSUInteger i = 0; i < self.delegates.count; i++) {
+        id tDelegate = [self getDelegateAtIndex:i];
+        if (!tDelegate) {
+            [self.delegates removeObjectAtIndex:i];
         }
-        strongSelf.needClean = NO;
-    });
+    }
+    self.needClean = NO;
 }
 
 
