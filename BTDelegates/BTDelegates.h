@@ -22,7 +22,7 @@
  //You can call the function of the protocol. You need not to check. Call directly.
  [delegates callTheFuncOfMyDelegate:sth];
  
- //you can add remove a delegate
+ //you can remove a delegate
  [delegates removeDelegate:obj1];
  
  */
